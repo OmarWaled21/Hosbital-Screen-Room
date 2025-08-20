@@ -11,21 +11,37 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+from decouple import Config, RepositoryEnv, Csv
+import os, sys
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+if getattr(sys, 'frozen', False):
+    # شغال كـ exe → جرب تدور على .env بجانب run.exe
+    env_external = os.path.join(os.path.dirname(sys.executable), '.env')
+    if os.path.exists(env_external):
+        config = Config(RepositoryEnv(env_external))
+    else:
+        config = Config(RepositoryEnv(os.path.join(sys._MEIPASS, '.env')))
+else:
+    # شغال كسورس كود
+    config = Config(RepositoryEnv(os.path.join(BASE_DIR, '.env')))
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-rr73+!ymay&5@40(yak303+_l206uiuw36@j86re2aj5a!+y-n'
+SECRET_KEY = config('SECRET_KEY')
+
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+USE_X_FORWARDED_HOST = True
+USE_X_FORWARDED_PORT = True
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = config("ALLOWED_HOSTS", cast=Csv())
 
 
 # Application definition
@@ -37,19 +53,51 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'widget_tweaks',
+    'rest_framework',
+    'rest_framework.authtoken',
+    'corsheaders', 
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.locale.LocaleMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
 ]
 
-ROOT_URLCONF = 'hosbital_backend.urls'
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework.authentication.TokenAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
+}
+
+ROOT_URLCONF = 'SW100_System.urls'
+
+CORS_ALLOW_ALL_ORIGINS = True  # In production, specify origins
+
+BASE_URL = config("BASE_URL")
+
+CSRF_TRUSTED_ORIGINS = config('BASE_URL', cast=Csv())
+
+BASE_IP = config("BASE_IP", default="127.0.0.1")
+BASE_PORT = config("BASE_PORT", default="8000")
+BASE_PROTOCOL = config("BASE_PROTOCOL", default="http")
+
+if BASE_PROTOCOL == "https" and BASE_PORT == "443":
+    BASE_URL = f"{BASE_PROTOCOL}://{BASE_IP}"
+elif BASE_PROTOCOL == "http" and BASE_PORT == "80":
+    BASE_URL = f"{BASE_PROTOCOL}://{BASE_IP}"
+else:
+    BASE_URL = f"{BASE_PROTOCOL}://{BASE_IP}:{BASE_PORT}"
 
 TEMPLATES = [
     {
@@ -74,8 +122,16 @@ WSGI_APPLICATION = 'hosbital_backend.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': config('DB_NAME'),
+        'USER': config('DB_USER'),
+        'PASSWORD': config('DB_PASSWORD'),
+        'HOST': config('DB_HOST'),
+        'PORT': config('DB_PORT'),
+        'OPTIONS': {
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+            'charset': 'utf8mb4',
+        },
     }
 }
 
@@ -104,19 +160,48 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Africa/Cairo'
 
 USE_I18N = True
 
-USE_TZ = True
+USE_TZ = False
+
+USE_L10N = True
 
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+
+# Specify the path that contains static files in the project
+if getattr(sys, 'frozen', False):
+    # داخل EXE → static موجود في sys._MEIPASS/static
+    STATICFILES_DIRS = [os.path.join(sys._MEIPASS, 'static')]
+else:
+    STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
+
+# Media settings
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.ManifestStaticFilesStorage'
+
+AUTH_USER_MODEL = 'authentication.CustomUser'  
+
+X_FRAME_OPTIONS = 'SAMEORIGIN'
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = config('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')  # Use App Password if you have 2FA enabled
+DEFAULT_FROM_EMAIL = 'tomatiki@gmail.com'
