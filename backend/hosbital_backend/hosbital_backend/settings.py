@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'corsheaders', 
+    'main_screen',
 ]
 
 MIDDLEWARE = [
@@ -80,7 +81,7 @@ REST_FRAMEWORK = {
     ),
 }
 
-ROOT_URLCONF = 'SW100_System.urls'
+ROOT_URLCONF = 'hosbital_backend.urls'
 
 CORS_ALLOW_ALL_ORIGINS = True  # In production, specify origins
 
@@ -194,7 +195,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.ManifestStaticFilesStorage'
 
-AUTH_USER_MODEL = 'authentication.CustomUser'  
+# AUTH_USER_MODEL = 'authentication.CustomUser'  
 
 X_FRAME_OPTIONS = 'SAMEORIGIN'
 
